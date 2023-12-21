@@ -7,6 +7,9 @@ import datetime
 import re
 from SendEmail import SendEmail
 from deepdiff import DeepDiff
+from selenium.webdriver.common.alert import Alert
+import sys
+
 
 
 class TrainScrapping:
@@ -136,20 +139,33 @@ class TrainScrapping:
             return False
     
     def start_refresh(self):
-        import pdb
-        pdb.set_trace()
         self.driver.refresh()
-        resend_button = self.driver.find_element_by_xpath("//button[text()='Resend']")
-
-
-        resend_button.click()
+        wait = WebDriverWait(self.driver, 10)  # Wait up to 10 seconds for the alert
+        alert = wait.until(EC.alert_is_present())
+        alert = self.driver.switch_to.alert
+        alert.accept()
         
         
+        now=datetime.datetime.now()
+        current_year=now.strftime("%Y")
+        current_month=now.strftime("%m")
+        current_date=now.strftime("%d")
+        current_time = now.strftime("%H:%M")
+        
+        if(current_date>str(self.date.strftime("%d")) or current_month>str(self.date.month) or current_year>str(self.date.year) or current_time>self.start_time):
+            sys.exit()
+        else:
+            self.check_for_seats()
         
         
     def check_for_seats(self):
         def add_data():
-            if(train_service not in self.available_seats["train_service"]):
+            print("-"*50)
+            print(self.available_seats)
+            print("-"*50)
+            print(self.prev_available_seats)
+            print("-"*50)
+            if(train_service.text not in self.available_seats["train_service"]):
                                         
                     self.available_seats["train_service"].append(train_service.text)
                     self.available_seats["Departure"].append(Departure.text)
@@ -159,6 +175,15 @@ class TrainScrapping:
             elif(avail_seats not in self.available_seats["avail_seats"] and self.available_seats):
                 index=self.available_seats["train_service"].index(train_service)
                 self.available_seats["avail_seats"][index]=avail_seats
+                
+        try:
+            close = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "popupModalCloseButton"))
+            )
+            close.click()
+        except:
+            print("Button with ID 'popupModalCloseButton' not found or not clickable.")
+            
         
         
         
