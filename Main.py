@@ -3,8 +3,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait,Select
 from selenium.webdriver.support import expected_conditions as EC
 import time
-from datetime import datetime
-
+import datetime
+import re
+from deepdiff import DeepDiff
 
 
 class TrainScrapping:
@@ -12,15 +13,16 @@ class TrainScrapping:
         self.driver = webdriver.Firefox()
         self.src="WOODLANDS CIQ"
         self.dest="WOODLANDS CIQ"
-        self.start_time=self.convert_to_24hr("03:45 PM")
-        self.date=datetime.strptime("26/12/2024", "%d/%m/%Y")
+        self.start_time=self.convert_to_24hr("10:00 PM")
+        self.date=datetime.datetime.strptime("21/12/2023", "%d/%m/%Y")
         self.month=self.date.strftime("%B")
         self.curr_year=None
         self.curr_month=None
         self.available_seats={}
+        self.prev_available_seats={}
         
     def convert_to_24hr(self,time_str):
-        time_obj = datetime.strptime(time_str, '%I:%M %p')  # Parse 12-hour format
+        time_obj = datetime.datetime.strptime(time_str, '%I:%M %p')  # Parse 12-hour format
         return time_obj.strftime('%H:%M')  # Format as 24-hour format
         
     def get_link(self):
@@ -87,14 +89,10 @@ class TrainScrapping:
         
 
         date_divs = days_container.find_elements(By.TAG_NAME, "div")
-        
-        import pdb
-        pdb.set_trace()
-        
 
         for date_div in date_divs:
             
-            if(date_div.get_attribute("class")!="lightpick__day is-previous-month is-disabled" and date_div.text==str(self.date.day)):  
+            if(date_div.get_attribute("class") not in ["lightpick__day is-previous-month is-disabled","lightpick__day is-available is-previous-month"] and date_div.text==str(self.date.day)):  
                 date_div.click()
                 break
                 
@@ -115,38 +113,114 @@ class TrainScrapping:
         
         self.check_for_seats()
         
+    def check_if_no_seat(self):
+        try:
+            span_element = WebDriverWait(self.driver, 5).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, "span.font-weight-bold"))
+            )
+            if(span_element.text=="No trips found."):
+                return True
+            else:
+                return False
+            
+        except:
+            return False
+    
+    def deep_compare(self,prev,current):
+        diff = DeepDiff(prev,current)
+        
+        if diff:
+            return True
+        else:
+            return False
+        
+        
         
     def check_for_seats(self):
-        import pdb
-        pdb.set_trace()
-        tbody = WebDriverWait(self.driver, 10).until(
-             EC.presence_of_element_located((By.CLASS_NAME, "bg-white depart-trips"))
-                )
-        rows = tbody.find_elements(By.TAG_NAME, "tr")
-        
-        for row in rows:
-            if("disabled" in row.get_attribute('class')):
-                continue
-            else:
-                data=row.find_element(By.TAG_NAME,"td")
-                element = data.find_element(By.CSS_SELECTOR, "td.f20.blue-left-border")
-                
-                if "train_service" not in self.available_seats:
-                    self.available_seats["train_service"]=list()
-                if("Departure" not in self.available_seats):
-                    self.available_seats['Departure']=list()
-                if("Arrival" not in self.available_seats):
-                    self.available_seats['Arrival']=list()
-                if("available_seats" not in self.available_seats):
-                    self.available_seats['Available seats']=list()
+        def add_data():
+            if(train_service not in self.available_seats["train_service"]):
+                                        
+                    self.available_seats["train_service"].append(train_service.text)
+                    self.available_seats["Departure"].append(Departure.text)
+                    self.available_seats["Arrival"].append(Arrival.text)
+                    self.available_seats["avail_seats"].append(avail_seats)
                     
-                self.available_seats["train_service"].append(element.text)
-                
-                
+            elif(avail_seats not in self.available_seats["avail_seats"] and self.available_seats):
+                index=self.available_seats["train_service"].index(train_service)
+                self.available_seats["avail_seats"][index]=avail_seats
         
-
-
+        
+        
+        flag=self.check_if_no_seat()
+        
+        if(flag==True):
+            pass # refresh the page
+        
+        else:
+            tbody = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "table > tbody.bg-white.depart-trips"))
+                    )
+            rows = tbody.find_elements(By.TAG_NAME, "tr")
             
+            for row in rows:
+                now = datetime.datetime.now()
+                current_year=now.strftime("%Y")
+                current_month=now.strftime("%m")
+                current_date=now.strftime("%d")
+                current_time = now.strftime("%H:%M")
+                
+                if("disabled" in row.get_attribute('class')):
+                    continue
+                else:
+                    # data=row.find_element(By.TAG_NAME,"td")
+                    train_service = row.find_element(By.CSS_SELECTOR, "tr > td.f20.blue-left-border")
+                    Departure=row.find_element(By.CSS_SELECTOR,"tr > td.text-center.f22")
+                    Arrival=row.find_element(By.CSS_SELECTOR,"tr > td.text-center.f22.text-nowrap")
+                    string=row.text
+                    match= re.search(r"\bm?\s*(\d+)\s*MYR?\b", string)
+                    avail_seats=match.group(1)
+                    
+                    
+                    
+                    if "train_service" not in self.available_seats:
+                        self.available_seats["train_service"]=list()
+                    if("Departure" not in self.available_seats):
+                        self.available_seats['Departure']=list()
+                    if("Arrival" not in self.available_seats):
+                        self.available_seats['Arrival']=list()
+                    if("avail_seats" not in self.available_seats):
+                        self.available_seats['avail_seats']=list()
+                        
+                    self.prev_available_seats=self.available_seats
+                    import pdb
+                    pdb.set_trace()
+                    
+                    if(current_year<str(self.date.year)):
+                        add_data()
+                        
+                    elif(current_month<str(self.date.month)):
+                        add_data()
+                    
+                    elif(current_date<str(self.date.date)):
+                        add_data()
+                        
+                    elif(current_time<self.start_time and self.start_time > Departure.text or self.start_time> Arrival.text):
+                        add_data()
+                         
+                        
+            compare_result=self.deep_compare(self.prev_available_seats,self.available_seats)
+            
+            if(compare_result):
+                #send_email
+                pass
+            else:
+                #refrsh and start scrapping
+                pass
+        
+        
+            
+            
+
             #need to swap place if needed 
 TS=TrainScrapping()
 TS.get_link()
