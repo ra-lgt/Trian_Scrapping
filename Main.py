@@ -134,6 +134,16 @@ class TrainScrapping:
             return True
         else:
             return False
+    
+    def start_refresh(self):
+        import pdb
+        pdb.set_trace()
+        self.driver.refresh()
+        resend_button = self.driver.find_element_by_xpath("//button[text()='Resend']")
+
+
+        resend_button.click()
+        
         
         
         
@@ -202,17 +212,18 @@ class TrainScrapping:
                     elif(current_date<str(self.date.strftime("%d"))):
                         add_data()
                         
-                    if(current_time<self.start_time and self.start_time > Departure.text or self.start_time> Arrival.text):
+                    elif(current_time<self.start_time and self.start_time > Departure.text or self.start_time> Arrival.text):
                         add_data()
-                         
                         
+     
             compare_result=self.deep_compare(self.prev_available_seats,self.available_seats)
             
             if(compare_result):
-                self.email.send_available_details(self.available_seats)
-                pass
+                self.email.send_available_details(self.available_seats,self.src,self.dest)
+                self.start_refresh()
             else:
                 #refrsh and start scrapping
+                self.start_refresh()
                 pass
         
         

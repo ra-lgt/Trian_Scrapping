@@ -1,42 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="styles.css" />
-    <title>Document</title>
-  </head>
-  <body>
-    <div class="hero">
-      </div>
-    <div class="ticket-grid">
-      <!-- Ticket Card 1 -->
-      <div class="ticket-card">
-        <h3>Train Name</h3>
-        <p>From :</p>
-        <p>To :</p>
-        <p>Arrival Time : </p>
-        <p>Departure Time :</p>
-        <p>Available Seats :</p>
+<link rel="stylesheet" href="https://unpkg.com/tailwindcss@0.7.4/dist/tailwind.min.css"/>
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.4/css/all.css"/>
+
+
+<div class="app font-sans min-w-screen min-h-screen bg-grey-lighter py-8 px-4">
+
+  <div class="mail__wrapper max-w-md mx-auto">
+
+    <div class="mail__content bg-white p-8 shadow-md">
+
+      <div class="content__header text-center tracking-wide border-b">
+        <h1 class="text-3xl h-48 flex items-center justify-center">AVAILABLE TRAINS</h1>
       </div>
 
-    </div>
-  </body>
-</html>
+      <div class="content__body py-8 border-b">
+         <div class="ticket-grid">
+          {% for i in range(count) %}
+     
+       <div class="ticket-card">
+        <h3>{{data["train_service"][i]}}</h3>
+        <p>From :{{data["source"][i]}}</p>
+        <p>To :{{data["destination"][i]}}</p>
+        <p>Arrival Time : {{data["Arrival"][i]}}</p>
+        <p>Departure Time :{{data["Departure"][i]}}</p>
+        <p>Available Seats :{{data["avail_seats"][i]}}</p>
+      </div>
+      {% endfor %}
+        <button class="text-white text-sm tracking-wide bg-red rounded w-full my-8 p-4 ">CHECKOUT NOW</button>
+      </div>
 
+      </div>
+
+  </div>
+
+</div>
 <style>
-body,
-h1,
-h2,
-h3,
-p,
-ul,
-li {
-  margin: 0;
-  padding: 0;
-}
-
-/* Set a base font size and family */
 body {
   font-family: "Arial", sans-serif;
   font-size: 16px;
@@ -45,7 +42,7 @@ body {
 /* Add styles for the ticket grid and card */
 .ticket-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 40px;
   margin: 30px;
 }
@@ -53,7 +50,7 @@ body {
 .ticket-card {
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 20px;
+  padding: 10px;
   text-align: center;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
