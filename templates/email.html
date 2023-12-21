@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="hero">
+      </div>
+    <div class="ticket-grid">
+      <!-- Ticket Card 1 -->
+      <div class="ticket-card">
+        <h3>Train Name</h3>
+        <p>From :</p>
+        <p>To :</p>
+        <p>Arrival Time : </p>
+        <p>Departure Time :</p>
+        <p>Available Seats :</p>
+      </div>
+
+    </div>
+  </body>
+</html>
+
+<style>
+body,
+h1,
+h2,
+h3,
+p,
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+
+/* Set a base font size and family */
+body {
+  font-family: "Arial", sans-serif;
+  font-size: 16px;
+}
+
+/* Add styles for the ticket grid and card */
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 40px;
+  margin: 30px;
+}
+
+.ticket-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.ticket-card h3 {
+  margin-bottom: 10px;
+}
+p{
+  text-align:left;
+  padding:2px;
+}
+</style>

@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import datetime
 import re
+from SendEmail import SendEmail
 from deepdiff import DeepDiff
 
 
@@ -14,13 +15,13 @@ class TrainScrapping:
         self.src="WOODLANDS CIQ"
         self.dest="WOODLANDS CIQ"
         self.start_time=self.convert_to_24hr("10:00 PM")
-        self.date=datetime.datetime.strptime("21/12/2023", "%d/%m/%Y")
+        self.date=datetime.datetime.strptime("25/12/2023", "%d/%m/%Y")
         self.month=self.date.strftime("%B")
         self.curr_year=None
         self.curr_month=None
         self.available_seats={}
         self.prev_available_seats={}
-        
+        self.email=SendEmail()
     def convert_to_24hr(self,time_str):
         time_obj = datetime.datetime.strptime(time_str, '%I:%M %p')  # Parse 12-hour format
         return time_obj.strftime('%H:%M')  # Format as 24-hour format
@@ -161,6 +162,7 @@ class TrainScrapping:
                 EC.presence_of_element_located((By.CLASS_NAME, "table > tbody.bg-white.depart-trips"))
                     )
             rows = tbody.find_elements(By.TAG_NAME, "tr")
+            self.prev_available_seats=self.available_seats.copy()
             
             for row in rows:
                 now = datetime.datetime.now()
@@ -190,10 +192,6 @@ class TrainScrapping:
                         self.available_seats['Arrival']=list()
                     if("avail_seats" not in self.available_seats):
                         self.available_seats['avail_seats']=list()
-                        
-                    self.prev_available_seats=self.available_seats
-                    import pdb
-                    pdb.set_trace()
                     
                     if(current_year<str(self.date.year)):
                         add_data()
@@ -201,17 +199,17 @@ class TrainScrapping:
                     elif(current_month<str(self.date.month)):
                         add_data()
                     
-                    elif(current_date<str(self.date.date)):
+                    elif(current_date<str(self.date.strftime("%d"))):
                         add_data()
                         
-                    elif(current_time<self.start_time and self.start_time > Departure.text or self.start_time> Arrival.text):
+                    if(current_time<self.start_time and self.start_time > Departure.text or self.start_time> Arrival.text):
                         add_data()
                          
                         
             compare_result=self.deep_compare(self.prev_available_seats,self.available_seats)
             
             if(compare_result):
-                #send_email
+                self.email.send_available_details(self.available_seats)
                 pass
             else:
                 #refrsh and start scrapping
