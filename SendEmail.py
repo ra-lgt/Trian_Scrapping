@@ -7,7 +7,7 @@ from premailer import transform
 
 
 class SendEmail:
-    def send_available_details(self,data,source,destination):
+    def send_available_details(self,data,source,destination,email_id):
         data["source"]=[source]*(len(data["train_service"]))
         data["destination"]=[destination]*(len(data["train_service"]))
         
@@ -19,7 +19,7 @@ class SendEmail:
         message=MIMEMultipart('alternative')
         message['subject']="Available Train From Bot"
         message["from"]="skillstormofficial01@gmail.com"
-        message["to"]="raviajay9344@gmail.com"
+        message["to"]=email_id
 
         html_mail=MIMEText(output_html_inline,'html')
         message.attach(html_mail)

@@ -9,22 +9,26 @@ from SendEmail import SendEmail
 from deepdiff import DeepDiff
 from selenium.webdriver.common.alert import Alert
 import sys
-
+from copy import deepcopy
+import threading
+import os
 
 
 class TrainScrapping:
-    def __init__(self):
+    def __init__(self,src,dest,start_time,start_date,email_id,end_time):
         self.driver = webdriver.Firefox()
-        self.src="WOODLANDS CIQ"
-        self.dest="WOODLANDS CIQ"
-        self.start_time=self.convert_to_24hr("10:00 PM")
-        self.date=datetime.datetime.strptime("25/12/2023", "%d/%m/%Y")
+        self.src=src.upper()
+        self.dest=dest.upper()
+        self.start_time=self.convert_to_24hr(start_time)
+        self.end_time=self.convert_to_24hr(end_time)
+        self.date=datetime.datetime.strptime(start_date, "%d/%m/%Y")
         self.month=self.date.strftime("%B")
         self.curr_year=None
         self.curr_month=None
         self.available_seats={}
         self.prev_available_seats={}
         self.email=SendEmail()
+        self.email_id=email_id
     def convert_to_24hr(self,time_str):
         time_obj = datetime.datetime.strptime(time_str, '%I:%M %p')  # Parse 12-hour format
         return time_obj.strftime('%H:%M')  # Format as 24-hour format
@@ -152,19 +156,33 @@ class TrainScrapping:
         current_date=now.strftime("%d")
         current_time = now.strftime("%H:%M")
         
-        if(current_date>str(self.date.strftime("%d")) or current_month>str(self.date.month) or current_year>str(self.date.year) or current_time>self.start_time):
-            sys.exit()
-        else:
+        if(current_date>str(self.date.strftime("%d")) or current_month>str(self.date.month) or current_year>str(self.date.year)):
+            os._exit(0)
+        try:
+            tag=WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div.col-md-2.col-sm-12.border-right.bg-white.paddlr20 > b.c8888"))
+            )
+            if(tag.text!="JOURNEY PLAN"):
+                self.check_for_seats()
+            else:
+                return
+                
+            
+        except:
+            return
+    
+        finally:
             self.check_for_seats()
         
         
     def check_for_seats(self):
+        train_service=None
+        Departure=None
+        Arrival=None
+        avail_seats=None
+
+        self.prev_available_seats=deepcopy(self.available_seats)
         def add_data():
-            print("-"*50)
-            print(self.available_seats)
-            print("-"*50)
-            print(self.prev_available_seats)
-            print("-"*50)
             if(train_service.text not in self.available_seats["train_service"]):
                                         
                     self.available_seats["train_service"].append(train_service.text)
@@ -172,8 +190,8 @@ class TrainScrapping:
                     self.available_seats["Arrival"].append(Arrival.text)
                     self.available_seats["avail_seats"].append(avail_seats)
                     
-            elif(avail_seats not in self.available_seats["avail_seats"] and self.available_seats):
-                index=self.available_seats["train_service"].index(train_service)
+            else:
+                index=self.available_seats["train_service"].index(train_service.text)
                 self.available_seats["avail_seats"][index]=avail_seats
                 
         try:
@@ -197,7 +215,7 @@ class TrainScrapping:
                 EC.presence_of_element_located((By.CLASS_NAME, "table > tbody.bg-white.depart-trips"))
                     )
             rows = tbody.find_elements(By.TAG_NAME, "tr")
-            self.prev_available_seats=self.available_seats.copy()
+            
             
             for row in rows:
                 now = datetime.datetime.now()
@@ -205,9 +223,17 @@ class TrainScrapping:
                 current_month=now.strftime("%m")
                 current_date=now.strftime("%d")
                 current_time = now.strftime("%H:%M")
+                # import pdb
+                # pdb.set_trace()
                 
                 if("disabled" in row.get_attribute('class')):
-                    continue
+                    train_service = row.find_element(By.CSS_SELECTOR, "tr > td.f20.blue-left-border")
+                    if("train_service" in self.available_seats and train_service.text in self.available_seats['train_service']):
+                        index=self.available_seats["train_service"].index(train_service.text)
+                        for key,value in self.available_seats.items():
+                            del self.available_seats[key][index]
+                    else:
+                        continue
                 else:
                     # data=row.find_element(By.TAG_NAME,"td")
                     train_service = row.find_element(By.CSS_SELECTOR, "tr > td.f20.blue-left-border")
@@ -216,7 +242,6 @@ class TrainScrapping:
                     string=row.text
                     match= re.search(r"\bm?\s*(\d+)\s*MYR?\b", string)
                     avail_seats=match.group(1)
-                    
                     
                     
                     if "train_service" not in self.available_seats:
@@ -229,22 +254,25 @@ class TrainScrapping:
                         self.available_seats['avail_seats']=list()
                     
                     if(current_year<str(self.date.year)):
-                        add_data()
+                        if((self.start_time<Departure.text or self.start_time<Arrival.text) and (self.end_time>Departure.text or self.end_time>Arrival.text)):
+                            add_data()
                         
                     elif(current_month<str(self.date.month)):
-                        add_data()
+                        if((self.start_time<Departure.text or self.start_time<Arrival.text) and (self.end_time>Departure.text or self.end_time>Arrival.text)):
+                            add_data()
                     
                     elif(current_date<str(self.date.strftime("%d"))):
-                        add_data()
+                        if((self.start_time<Departure.text or self.start_time<Arrival.text) and (self.end_time>Departure.text or self.end_time>Arrival.text)):
+                            add_data()
                         
-                    elif(current_time<self.start_time and self.start_time > Departure.text or self.start_time> Arrival.text):
+                    elif(current_time<self.start_time and (self.start_time < Departure.text or self.start_time < Arrival.text) and (self.end_time> Departure.text or self.end_time>Arrival.text)):
                         add_data()
                         
      
             compare_result=self.deep_compare(self.prev_available_seats,self.available_seats)
             
             if(compare_result):
-                self.email.send_available_details(self.available_seats,self.src,self.dest)
+                self.email.send_available_details(self.available_seats,self.src,self.dest,self.email_id)
                 self.start_refresh()
             else:
                 #refrsh and start scrapping
@@ -256,5 +284,28 @@ class TrainScrapping:
             
 
             #need to swap place if needed 
-TS=TrainScrapping()
-TS.get_link()
+
+print("*"*100)
+print("Dont't worry i'll check the available tickets run me :)")
+print("KINDLY PROVIDE INPUTS BASED ON THE EXAMPLES")
+print("*"*100)
+
+src=input("Enter the Source (eg: WOODLANDS CIQ):").strip()
+dest=input("Enter the Destination (eg:WOODLANDS CIQ):").strip()
+
+
+start_date=input("Enter the date on which you have to travel format dd/mm/yyyy eg(25/12/2023) '/' is important:").strip()
+start_time=input("Enter the start time eg(10:00 PM) format should be 12 : ").strip()
+end_time=input("Enter the end timing eg(10:00 PM) format should be 12 : ").strip()
+email_id=input("Enter the email you need to get the notification:").strip()
+
+print("THANK YOU")
+print("*"*100)
+print("Hold tightly we're going to launch")
+TS=TrainScrapping(src,dest,start_time,start_date,email_id,end_time)
+while(True):
+    thread=threading.Thread(target=TS.get_link)
+    thread.start()
+    print("NEW THREAD")
+    
+    thread.join()
